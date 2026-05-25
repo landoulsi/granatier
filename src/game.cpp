@@ -62,7 +62,8 @@ Game::Game(PlayerSettings* playerSettings)
             
             if (m_playerSettings->isComputer(strPlayerIDs[i]))
             {
-                auto* ai = new PlayerAI(this, player);
+                int level = m_playerSettings->computerLevel(strPlayerIDs[i]);
+                auto* ai = new PlayerAI(this, player, level);
                 m_playerAIs.append(ai);
             }
         }

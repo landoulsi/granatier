@@ -41,8 +41,9 @@ PlayerSelectorItem::PlayerSelectorItem(const QString& playerId, PlayerSettings* 
     m_labelControl = new QLabel(i18n("Control:"), this);
     m_controlComboBox = new QComboBox(this);
     m_controlComboBox->addItem(i18n("Human"));
-    m_controlComboBox->addItem(i18n("Computer AI"));
-    m_controlComboBox->setCurrentIndex(m_playerSettings->isComputer(playerId) ? 1 : 0);
+    m_controlComboBox->addItem(i18n("AI (Level 1)"));
+    m_controlComboBox->addItem(i18n("AI (Level 2)"));
+    m_controlComboBox->setCurrentIndex(m_playerSettings->computerLevel(playerId));
     
     const qreal dpr = qApp->devicePixelRatio();
     const int previewSize = 64 * dpr;
@@ -248,7 +249,7 @@ void PlayerSelectorItem::selectionChanged(bool selectionState)
 void PlayerSelectorItem::settingsChanged()
 {
     m_playerSettings->setEnabled(m_playerId, m_selectCheckBox->isChecked());
-    m_playerSettings->setIsComputer(m_playerId, m_controlComboBox->currentIndex() == 1);
+    m_playerSettings->setIsComputer(m_playerId, m_controlComboBox->currentIndex());
     m_playerSettings->setPlayerName(m_playerId, m_playerName->text());
     m_playerSettings->setKeyLeft(m_playerId, m_moveLeft->keySequence());
     m_playerSettings->setKeyUp(m_playerId, m_moveUp->keySequence());

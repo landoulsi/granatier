@@ -41,7 +41,7 @@ PlayerSettings::PlayerSettings()
         settings.strPlayerName = desktopFile.group(QStringLiteral("KGameTheme")).readEntry("Name", QString());
         settings.strPlayerGraphicsFile = desktopFile.group(QStringLiteral("KGameTheme")).readEntry("FileName", QString());
         settings.enabled = false;
-        settings.isComputer = false;
+        settings.isComputer = 0;
         settings.team = 0;
         
         m_playerSettings.insert(settings.strPlayerID, settings);
@@ -154,6 +154,11 @@ bool PlayerSettings::enabled(const QString& strPlayerID) const
 
 bool PlayerSettings::isComputer(const QString& strPlayerID) const
 {
+    return m_playerSettings.value(strPlayerID).isComputer != 0;
+}
+
+int PlayerSettings::computerLevel(const QString& strPlayerID) const
+{
     return m_playerSettings.value(strPlayerID).isComputer;
 }
 
@@ -233,7 +238,7 @@ void PlayerSettings::savePlayerSettings()
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("PlayerID", (*player).strPlayerID);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Name", (*player).strPlayerName);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Enabled", ((*player).enabled ? 1 : 0));
-            granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("IsComputer", ((*player).isComputer ? 1 : 0));
+            granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("IsComputer", (*player).isComputer);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Team", (*player).team);
             
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("KeyUp", (*player).keyUp.toString());
@@ -253,7 +258,7 @@ void PlayerSettings::savePlayerSettings()
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("PlayerID", player.strPlayerID);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Name", player.strPlayerName);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Enabled", ( player.enabled ? 1 : 0));
-            granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("IsComputer", ( player.isComputer ? 1 : 0));
+            granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("IsComputer", player.isComputer);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Team", player.team);
             
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("KeyUp", player.keyUp.toString());
@@ -290,7 +295,7 @@ void PlayerSettings::setEnabled(const QString& strPlayerID, const bool enabled)
     }
 }
 
-void PlayerSettings::setIsComputer(const QString& strPlayerID, const bool isComputer)
+void PlayerSettings::setIsComputer(const QString& strPlayerID, const int isComputer)
 {
     if( m_pendingPlayerSettings.contains(strPlayerID))
     {
