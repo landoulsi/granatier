@@ -13,6 +13,7 @@
 class Game;
 class Player;
 class AIStrategy;
+class AIStrategyLevel2;
 
 /**
  * @brief This class implements the Computer/AI controller dispatcher for a Player.
@@ -24,6 +25,7 @@ class PlayerAI : public QObject
 
     friend class AIStrategy;
     friend class AIStrategyLevel1;
+    friend class AIStrategyLevel2;
 
 private:
     Game* m_game;
@@ -36,9 +38,9 @@ public:
      * @brief Constructor.
      * @param game The game model instance.
      * @param player The player model instance to control.
-     * @param level The difficulty/AI level to run (default is 1).
+     * @param level The difficulty/AI level to run (default is 2).
      */
-    PlayerAI(Game* game, Player* player, int level = 1);
+    PlayerAI(Game* game, Player* player, int level = 2);
 
     /**
      * @brief Destructor.

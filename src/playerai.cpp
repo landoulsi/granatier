@@ -6,6 +6,7 @@
 
 #include "playerai.h"
 #include "aistrategylevel1.h"
+#include "aistrategylevel2.h"
 #include "game.h"
 #include "player.h"
 
@@ -17,6 +18,8 @@ PlayerAI::PlayerAI(Game* game, Player* player, int level)
 {
     if (m_level == 1) {
         m_strategy = std::make_unique<AIStrategyLevel1>(this);
+    } else if (m_level == 2) {
+        m_strategy = std::make_unique<AIStrategyLevel2>(this);
     }
 }
 

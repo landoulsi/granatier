@@ -64,6 +64,8 @@ target_sources(granatier PRIVATE
     aistrategy.h
     aistrategylevel1.cpp
     aistrategylevel1.h
+    aistrategylevel2.cpp
+    aistrategylevel2.h
     player.cpp
     player.h
     playerai.cpp
