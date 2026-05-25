@@ -61,6 +61,9 @@ target_sources(granatier PRIVATE
     mainwindow.h
     mapparser.cpp
     mapparser.h
+    aistrategy.h
+    aistrategylevel1.cpp
+    aistrategylevel1.h
     player.cpp
     player.h
     playerai.cpp
