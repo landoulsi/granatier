@@ -32,7 +32,8 @@ InfoSidebar::InfoSidebar (Game* p_game, GameScene* p_scene) : QObject()
     //calculate max player name length and top-left position
     for(int i = 0; i < playerList.count(); i++)
     {
-        QGraphicsTextItem playerName (playerList[i]->getPlayerName());
+        QString displayName = QStringLiteral("%1 (%2)").arg(playerList[i]->getPlayerName()).arg(playerList[i]->points());
+        QGraphicsTextItem playerName (displayName);
         playerName.setFont(QFont(QStringLiteral("Helvetica"), static_cast<int>(Granatier::CellSize * 0.25), QFont::Bold, false));
         if(nMaxPlayerNameLength < playerName.boundingRect().width())
         {
@@ -88,7 +89,8 @@ InfoSidebar::InfoSidebar (Game* p_game, GameScene* p_scene) : QObject()
         }
 
         //create the player names
-        playerInfo->name = new QGraphicsTextItem(playerList[i]->getPlayerName());
+        QString displayName = QStringLiteral("%1 (%2)").arg(playerList[i]->getPlayerName()).arg(playerList[i]->points());
+        playerInfo->name = new QGraphicsTextItem(displayName);
         playerInfo->name->setFont(QFont(QStringLiteral("Helvetica"), static_cast<int>(Granatier::CellSize * 0.25), QFont::Bold, false));
         playerInfo->name->setDefaultTextColor(QColor(0xFF, 0xFF, 0x00));
         playerInfo->name->setZValue(1001);

@@ -718,8 +718,7 @@ void Player::die()
     {
         m_death = true;
         Q_EMIT dying();
-        m_xSpeed = 0;
-        m_xSpeed = 0;
+        stopMoving();
 
         if(m_badBonusCountdownTimer->isActive())
         {
@@ -735,6 +734,16 @@ void Player::die()
 bool Player::isAlive() const
 {
     return !m_death;
+}
+
+bool Player::isFalling() const
+{
+    return m_falling;
+}
+
+int Player::bombArmory() const
+{
+    return m_bombArmory;
 }
 
 void Player::resurrect()
@@ -967,22 +976,18 @@ void Player::keyPressed(QKeyEvent* keyEvent)
     if(key == m_key.moveLeft)
     {
         goLeft();
-        updateDirection();
     }
     else if(key == m_key.moveRight)
     {
         goRight();
-        updateDirection();
     }
     else if(key == m_key.moveUp)
     {
         goUp();
-        updateDirection();
     }
     else if(key == m_key.moveDown)
     {
         goDown();
-        updateDirection();
     }
     else if(key == m_key.dropBomb)
     {
@@ -997,6 +1002,24 @@ void Player::keyPressed(QKeyEvent* keyEvent)
         }
     }
 
+}
+
+void Player::dropBomb()
+{
+    if(m_death || m_falling)
+    {
+        return;
+    }
+
+    if(m_bombArmory > 0)
+    {
+        Q_EMIT bombDropped(this, m_x, m_y, true, 2);
+        m_omitBombCurrentCell = true;
+    }
+    else
+    {
+        Q_EMIT bombDropped(this, m_x, m_y, false, 2);
+    }
 }
 
 void Player::keyReleased(QKeyEvent* keyEvent)

@@ -63,6 +63,8 @@ target_sources(granatier PRIVATE
     mapparser.h
     player.cpp
     player.h
+    playerai.cpp
+    playerai.h
     playeritem.cpp
     playeritem.h
 

@@ -18,6 +18,7 @@
 #include "block.h"
 #include "config/playersettings.h"
 #include "granatier_random.h"
+#include "playerai.h"
 
 #include <QPointF>
 #include <QSet>
@@ -58,6 +59,12 @@ Game::Game(PlayerSettings* playerSettings)
             connect(player, &Player::dying, this, &Game::playerDeath);
             connect(player, &Player::falling, this, &Game::playerFalling);
             connect(player, &Player::resurrectBonusTaken, this, &Game::resurrectBonusTaken);
+            
+            if (m_playerSettings->isComputer(strPlayerIDs[i]))
+            {
+                auto* ai = new PlayerAI(this, player);
+                m_playerAIs.append(ai);
+            }
         }
     }
 
@@ -193,6 +200,9 @@ Game::~Game()
     //pause is needed to stop all animations and therefore the access of the *items to their model
     pause(true);
 
+    qDeleteAll(m_playerAIs);
+    m_playerAIs.clear();
+
     qDeleteAll(m_players);
     m_players.clear();
 
@@ -274,6 +284,11 @@ void Game::switchPause()
 QList<Player*> Game::getPlayers() const
 {
     return m_players;
+}
+
+QList<Bomb*> Game::getBombs() const
+{
+    return m_bombs;
 }
 
 QTimer* Game::getTimer() const
@@ -522,6 +537,12 @@ void Game::update()
     for (auto & bomb : m_bombs)
     {
         bomb->updateMove();
+    }
+
+    //update Player AIs
+    for (auto & ai : m_playerAIs)
+    {
+        ai->update();
     }
 
     //update Player

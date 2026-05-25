@@ -17,6 +17,7 @@
 class GameScene;
 class Arena;
 class Player;
+class PlayerAI;
 class Bonus;
 class Bomb;
 class Block;
@@ -75,6 +76,9 @@ private :
 
     /** The Players */
     QList<Player*> m_players;
+
+    /** The Player AIs */
+    QList<PlayerAI*> m_playerAIs;
 
     /** The Bombs */
     QList<Bomb*> m_bombs;
@@ -156,6 +160,11 @@ public:
     * @return the Player models
     */
     QList<Player*> getPlayers() const;
+
+    /**
+    * @return the active Bomb models
+    */
+    QList<Bomb*> getBombs() const;
 
     /**
     * @return the Bonus instance

@@ -33,6 +33,9 @@ private:
     
     QLabel* m_labelTeam;
     class QComboBox* m_teamComboBox;
+
+    QLabel* m_labelControl;
+    class QComboBox* m_controlComboBox;
     
     KKeySequenceWidget* m_moveLeft;
     KKeySequenceWidget* m_moveUp;

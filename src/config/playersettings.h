@@ -24,6 +24,7 @@ public:
     const QString playerDesktopFilePath(const QString& strPlayerID) const;
     const QString playerGraphicsFile(const QString& strPlayerID) const;
     bool enabled(const QString& strPlayerID) const;
+    bool isComputer(const QString& strPlayerID) const;
     int team(const QString& strPlayerID) const;
     const QKeySequence keyUp(const QString& strPlayerID) const;
     const QKeySequence keyRight(const QString& strPlayerID) const;
@@ -35,6 +36,7 @@ public:
     void discardUnsavedSettings();
     void setPlayerName(const QString& strPlayerID, const QString& strName);
     void setEnabled(const QString& strPlayerID, const bool enabled);
+    void setIsComputer(const QString& strPlayerID, const bool isComputer);
     void setKeyUp(const QString& strPlayerID, const QKeySequence& key);
     void setKeyRight(const QString& strPlayerID, const QKeySequence& key);
     void setKeyDown(const QString& strPlayerID, const QKeySequence& key);
@@ -51,6 +53,7 @@ private:
         QString strPlayerDesktopFilePath;
         QString strPlayerGraphicsFile;
         bool enabled;
+        bool isComputer;
         int team;
         QKeySequence keyUp;
         QKeySequence keyRight;

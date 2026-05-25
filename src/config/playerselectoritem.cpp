@@ -38,6 +38,12 @@ PlayerSelectorItem::PlayerSelectorItem(const QString& playerId, PlayerSettings* 
     m_teamComboBox->addItem(i18n("Team 5"));
     m_teamComboBox->setCurrentIndex(m_playerSettings->team(playerId));
     
+    m_labelControl = new QLabel(i18n("Control:"), this);
+    m_controlComboBox = new QComboBox(this);
+    m_controlComboBox->addItem(i18n("Human"));
+    m_controlComboBox->addItem(i18n("Computer AI"));
+    m_controlComboBox->setCurrentIndex(m_playerSettings->isComputer(playerId) ? 1 : 0);
+    
     const qreal dpr = qApp->devicePixelRatio();
     const int previewSize = 64 * dpr;
     m_playerPreviewPixmap = QPixmap(QSize(previewSize, previewSize));
@@ -65,6 +71,8 @@ PlayerSelectorItem::PlayerSelectorItem(const QString& playerId, PlayerSettings* 
     gridLayoutPlayer->addWidget(m_playerAuthor, 2, 2);//, 1, 1, Qt::AlignBottom);
     gridLayoutPlayer->addWidget(m_labelTeam, 3, 1);
     gridLayoutPlayer->addWidget(m_teamComboBox, 3, 2, 1, 2);
+    gridLayoutPlayer->addWidget(m_labelControl, 4, 1);
+    gridLayoutPlayer->addWidget(m_controlComboBox, 4, 2, 1, 2);
     
     auto* gridLayoutKeySequence = new QGridLayout();
     gridLayoutKeySequence->setContentsMargins(0, 0, 0, 0);
@@ -150,6 +158,10 @@ PlayerSelectorItem::PlayerSelectorItem(const QString& playerId, PlayerSettings* 
     connect(m_moveDown, &KKeySequenceWidget::keySequenceChanged, this, &PlayerSelectorItem::settingsChanged);
     connect(m_dropBomb, &KKeySequenceWidget::keySequenceChanged, this, &PlayerSelectorItem::settingsChanged);
     connect(m_teamComboBox, &QComboBox::currentIndexChanged, this, &PlayerSelectorItem::settingsChanged);
+    connect(m_controlComboBox, &QComboBox::currentIndexChanged, this, [this]() {
+        selectionChanged(m_selectCheckBox->isChecked());
+        settingsChanged();
+    });
 }
 
 PlayerSelectorItem::~PlayerSelectorItem()
@@ -161,6 +173,8 @@ PlayerSelectorItem::~PlayerSelectorItem()
     delete m_playerAuthor;
     delete m_labelTeam;
     delete m_teamComboBox;
+    delete m_labelControl;
+    delete m_controlComboBox;
     
     delete m_moveLeft;
     delete m_moveUp;
@@ -200,6 +214,8 @@ void PlayerSelectorItem::selectionChanged(bool selectionState)
     m_playerAuthor->setEnabled(selectionState);
     m_labelTeam->setEnabled(selectionState);
     m_teamComboBox->setEnabled(selectionState);
+    m_labelControl->setEnabled(selectionState);
+    m_controlComboBox->setEnabled(selectionState);
     
     if(selectionState == true)
     {
@@ -214,22 +230,25 @@ void PlayerSelectorItem::selectionChanged(bool selectionState)
     tempImage.setAlphaChannel(m_playerPreviewImageAlphaChannel);
     m_playerPreviewPixmapLabel->setPixmap(QPixmap::fromImage(tempImage));
     
-    m_moveLeft->setEnabled(selectionState);
-    m_moveUp->setEnabled(selectionState);
-    m_moveRight->setEnabled(selectionState);
-    m_moveDown->setEnabled(selectionState);
-    m_dropBomb->setEnabled(selectionState);
+    bool keysEnabled = selectionState && (m_controlComboBox->currentIndex() == 0);
     
-    m_labelMoveLeft->setEnabled(selectionState);
-    m_labelMoveUp->setEnabled(selectionState);
-    m_labelMoveRight->setEnabled(selectionState);
-    m_labelMoveDown->setEnabled(selectionState);
-    m_labelDropBomb->setEnabled(selectionState);
+    m_moveLeft->setEnabled(keysEnabled);
+    m_moveUp->setEnabled(keysEnabled);
+    m_moveRight->setEnabled(keysEnabled);
+    m_moveDown->setEnabled(keysEnabled);
+    m_dropBomb->setEnabled(keysEnabled);
+    
+    m_labelMoveLeft->setEnabled(keysEnabled);
+    m_labelMoveUp->setEnabled(keysEnabled);
+    m_labelMoveRight->setEnabled(keysEnabled);
+    m_labelMoveDown->setEnabled(keysEnabled);
+    m_labelDropBomb->setEnabled(keysEnabled);
 }
 
 void PlayerSelectorItem::settingsChanged()
 {
     m_playerSettings->setEnabled(m_playerId, m_selectCheckBox->isChecked());
+    m_playerSettings->setIsComputer(m_playerId, m_controlComboBox->currentIndex() == 1);
     m_playerSettings->setPlayerName(m_playerId, m_playerName->text());
     m_playerSettings->setKeyLeft(m_playerId, m_moveLeft->keySequence());
     m_playerSettings->setKeyUp(m_playerId, m_moveUp->keySequence());

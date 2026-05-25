@@ -263,6 +263,16 @@ public:
     bool isAlive() const;
 
     /**
+      *  returns if the player is falling in a hole
+      */
+    bool isFalling() const;
+
+    /**
+      *  returns the number of bombs in the armory
+      */
+    int bombArmory() const;
+
+    /**
       * resurrects the player
       */
     void resurrect();
@@ -281,6 +291,16 @@ public:
       * Emits a signal to PlayerItem in order to manage collisions
       */
     void emitGameUpdated();
+
+    /**
+      * Programmatically drops a bomb (used by AI)
+      */
+    void dropBomb();
+
+    /**
+      * Stops moving the Player
+      */
+    void stopMoving();
 
     /**
       * Manages the keys for moving and dropping bombs.
@@ -307,11 +327,6 @@ private:
       * Updates the Player direction with the asked direction
       */
     void updateDirection();
-
-    /**
-      * Stops moving the Player
-      */
-    void stopMoving();
 
 public Q_SLOTS:
     /**

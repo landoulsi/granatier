@@ -41,6 +41,7 @@ PlayerSettings::PlayerSettings()
         settings.strPlayerName = desktopFile.group(QStringLiteral("KGameTheme")).readEntry("Name", QString());
         settings.strPlayerGraphicsFile = desktopFile.group(QStringLiteral("KGameTheme")).readEntry("FileName", QString());
         settings.enabled = false;
+        settings.isComputer = false;
         settings.team = 0;
         
         m_playerSettings.insert(settings.strPlayerID, settings);
@@ -62,6 +63,7 @@ PlayerSettings::PlayerSettings()
             {
                 m_playerSettings.find(strPlayerID).value().strPlayerName = granatierConfig.group(QStringLiteral("Player")).group(player).readEntry<QString>("Name", QString());
                 m_playerSettings.find(strPlayerID).value().enabled = granatierConfig.group(QStringLiteral("Player")).group(player).readEntry<int>("Enabled", 0);
+                m_playerSettings.find(strPlayerID).value().isComputer = granatierConfig.group(QStringLiteral("Player")).group(player).readEntry<int>("IsComputer", 0);
                 if(m_playerSettings.find(strPlayerID).value().enabled)
                 {
                     nEnableCount++;
@@ -150,6 +152,11 @@ bool PlayerSettings::enabled(const QString& strPlayerID) const
     return m_playerSettings.value(strPlayerID).enabled;
 }
 
+bool PlayerSettings::isComputer(const QString& strPlayerID) const
+{
+    return m_playerSettings.value(strPlayerID).isComputer;
+}
+
 const QKeySequence PlayerSettings::keyUp(const QString& strPlayerID) const
 {
     return m_playerSettings.value(strPlayerID).keyUp;
@@ -226,6 +233,7 @@ void PlayerSettings::savePlayerSettings()
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("PlayerID", (*player).strPlayerID);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Name", (*player).strPlayerName);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Enabled", ((*player).enabled ? 1 : 0));
+            granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("IsComputer", ((*player).isComputer ? 1 : 0));
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Team", (*player).team);
             
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("KeyUp", (*player).keyUp.toString());
@@ -245,6 +253,7 @@ void PlayerSettings::savePlayerSettings()
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("PlayerID", player.strPlayerID);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Name", player.strPlayerName);
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Enabled", ( player.enabled ? 1 : 0));
+            granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("IsComputer", ( player.isComputer ? 1 : 0));
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("Team", player.team);
             
             granatierConfig.group(QStringLiteral("Player")).group(QStringLiteral("%1").arg(nPlayersGroupIndex)).writeEntry("KeyUp", player.keyUp.toString());
@@ -277,6 +286,15 @@ void PlayerSettings::setEnabled(const QString& strPlayerID, const bool enabled)
     if( m_pendingPlayerSettings.contains(strPlayerID))
     {
         m_pendingPlayerSettings.find(strPlayerID).value().enabled = enabled;
+        Settings::self()->setDummy(Settings::self()->dummy() + 3);
+    }
+}
+
+void PlayerSettings::setIsComputer(const QString& strPlayerID, const bool isComputer)
+{
+    if( m_pendingPlayerSettings.contains(strPlayerID))
+    {
+        m_pendingPlayerSettings.find(strPlayerID).value().isComputer = isComputer;
         Settings::self()->setDummy(Settings::self()->dummy() + 3);
     }
 }
