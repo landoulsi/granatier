@@ -86,6 +86,13 @@ std::vector<std::vector<bool>> AIStrategyLevel2::computeDangerGrid(const QPoint&
         }
     }
 
+    // Map recent danger cells
+    for (const auto& item : m_recentDangerCells) {
+        if (item.cell.y() >= 0 && item.cell.y() < m_rows && item.cell.x() >= 0 && item.cell.x() < m_cols) {
+            danger[item.cell.y()][item.cell.x()] = true;
+        }
+    }
+
     return danger;
 }
 
@@ -488,9 +495,51 @@ void AIStrategyLevel2::update()
         }
         m_currentTargetCell = QPoint(-1, -1);
         m_currentPath.clear();
+        m_recentDangerCells.clear();
     }
 
     if (!m_arena) return;
+
+    // Tick down recent danger cells persistence list
+    for (int i = m_recentDangerCells.size() - 1; i >= 0; --i) {
+        m_recentDangerCells[i].ticksLeft--;
+        if (m_recentDangerCells[i].ticksLeft <= 0) {
+            m_recentDangerCells.removeAt(i);
+        }
+    }
+
+    auto addRecentDanger = [this](const QPoint& pt, int ticks) {
+        for (auto& item : m_recentDangerCells) {
+            if (item.cell == pt) {
+                item.ticksLeft = std::max(item.ticksLeft, ticks);
+                return;
+            }
+        }
+        m_recentDangerCells.append(RecentDanger(pt, ticks));
+    };
+
+    // Keep blast cells of active bombs flagged as persistent danger
+    QList<Bomb*> bombs = m_ai->game()->getBombs();
+    for (auto* bomb : bombs) {
+        int r = m_arena->getRowFromY(bomb->getY());
+        int c = m_arena->getColFromX(bomb->getX());
+        if (r >= 0 && r < m_rows && c >= 0 && c < m_cols) {
+            addRecentDanger(QPoint(c, r), 15);
+            int power = bomb->bombPower();
+            int rowOffsets[] = {-1, 1, 0, 0};
+            int colOffsets[] = {0, 0, -1, 1};
+            for (int i = 0; i < 4; ++i) {
+                for (int step = 1; step <= power; ++step) {
+                    int nr = r + rowOffsets[i] * step;
+                    int nc = c + colOffsets[i] * step;
+                    if (nr < 0 || nr >= m_rows || nc < 0 || nc >= m_cols) break;
+                    if (m_arena->getCell(nr, nc).getType() == Granatier::Cell::WALL) break;
+                    addRecentDanger(QPoint(nc, nr), 15);
+                    if (!m_arena->getCell(nr, nc).getElements(Granatier::Element::BLOCK).isEmpty()) break;
+                }
+            }
+        }
+    }
 
     int myRow = m_arena->getRowFromY(m_ai->player()->getY());
     int myCol = m_arena->getColFromX(m_ai->player()->getX());

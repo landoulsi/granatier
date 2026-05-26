@@ -34,6 +34,14 @@ private:
         GridNode(int row, int col, int parent = -1) : r(row), c(col), parentIdx(parent) {}
     };
 
+    struct RecentDanger {
+        QPoint cell;
+        int ticksLeft;
+        RecentDanger() : ticksLeft(0) {}
+        RecentDanger(const QPoint& pt, int ticks) : cell(pt), ticksLeft(ticks) {}
+    };
+    QList<RecentDanger> m_recentDangerCells;
+
     std::vector<std::vector<bool>> computeDangerGrid(const QPoint& simulatedBombPos = QPoint(-1, -1));
     QList<QPoint> findPath(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlyAvoidDeadEnds = false);
     QList<QPoint> findPathImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlySafe, bool strictlyAvoidBadBonuses, bool strictlyAvoidDeadEnds);
