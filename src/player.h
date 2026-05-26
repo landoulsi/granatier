@@ -90,6 +90,9 @@ private:
     /** milliseconds to elapse till the last bad bonus will be removed */
     int m_badBonusMillisecondsToElapse;
 
+    /** AI Difficulty level (0 = Human, 1 = Level 1 AI, 2 = Level 2 AI) */
+    int m_aiLevel;
+
 
 
 public:
@@ -271,6 +274,16 @@ public:
       *  returns the number of bombs in the armory
       */
     int bombArmory() const;
+
+    /**
+      * sets the AI Difficulty level
+      */
+    void setAILevel(int level);
+
+    /**
+      * returns the AI Difficulty level
+      */
+    int aiLevel() const;
 
     /**
       * resurrects the player

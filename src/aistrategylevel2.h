@@ -27,6 +27,7 @@ private:
     // Movement state
     QList<QPoint> m_currentPath;
     QPoint m_currentTargetCell;
+    int m_pathCommitTicks;  // Cooldown: don't re-evaluate path for this many ticks
 
     struct GridNode {
         int r, c;
@@ -42,7 +43,7 @@ private:
     };
     QList<RecentDanger> m_recentDangerCells;
 
-    std::vector<std::vector<bool>> computeDangerGrid(const QPoint& simulatedBombPos = QPoint(-1, -1));
+    std::vector<std::vector<bool>> computeDangerGrid(const QPoint& simulatedBombPos = QPoint(-1, -1), bool includeRecentDanger = true);
     QList<QPoint> findPath(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlyAvoidDeadEnds = false);
     QList<QPoint> findPathImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlySafe, bool strictlyAvoidBadBonuses, bool strictlyAvoidDeadEnds);
     QList<QPoint> findPathToEnemyDirectly(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, bool strictlyAvoidDeadEnds = false);

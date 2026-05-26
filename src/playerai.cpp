@@ -16,6 +16,9 @@ PlayerAI::PlayerAI(Game* game, Player* player, int level)
     , m_player(player)
     , m_level(level)
 {
+    if (m_player) {
+        m_player->setAILevel(m_level);
+    }
     if (m_level == 1) {
         m_strategy = std::make_unique<AIStrategyLevel1>(this);
     } else if (m_level == 2) {

@@ -25,6 +25,7 @@ AIStrategyLevel2::AIStrategyLevel2(PlayerAI* ai)
     , m_cols(0)
 {
     m_currentTargetCell = QPoint(-1, -1);
+    m_pathCommitTicks = 0;
 }
 
 AIStrategyLevel2::~AIStrategyLevel2()
@@ -34,7 +35,7 @@ AIStrategyLevel2::~AIStrategyLevel2()
     }
 }
 
-std::vector<std::vector<bool>> AIStrategyLevel2::computeDangerGrid(const QPoint& simulatedBombPos)
+std::vector<std::vector<bool>> AIStrategyLevel2::computeDangerGrid(const QPoint& simulatedBombPos, bool includeRecentDanger)
 {
     std::vector<std::vector<bool>> danger(m_rows, std::vector<bool>(m_cols, false));
     QList<Bomb*> bombs = m_ai->game()->getBombs();
@@ -86,10 +87,12 @@ std::vector<std::vector<bool>> AIStrategyLevel2::computeDangerGrid(const QPoint&
         }
     }
 
-    // Map recent danger cells
-    for (const auto& item : m_recentDangerCells) {
-        if (item.cell.y() >= 0 && item.cell.y() < m_rows && item.cell.x() >= 0 && item.cell.x() < m_cols) {
-            danger[item.cell.y()][item.cell.x()] = true;
+    // Map recent danger cells (only if requested)
+    if (includeRecentDanger) {
+        for (const auto& item : m_recentDangerCells) {
+            if (item.cell.y() >= 0 && item.cell.y() < m_rows && item.cell.x() >= 0 && item.cell.x() < m_cols) {
+                danger[item.cell.y()][item.cell.x()] = true;
+            }
         }
     }
 
@@ -402,72 +405,23 @@ void AIStrategyLevel2::moveTowardsCell(const QPoint& targetCell)
     int myRow = m_arena->getRowFromY(m_ai->player()->getY());
     int myCol = m_arena->getColFromX(m_ai->player()->getX());
 
-    qreal targetCenterX = (targetCell.x() + 0.5) * Granatier::CellSize;
-    qreal targetCenterY = (targetCell.y() + 0.5) * Granatier::CellSize;
-    qreal myCenterX = (myCol + 0.5) * Granatier::CellSize;
-    qreal myCenterY = (myRow + 0.5) * Granatier::CellSize;
-
-    qreal currX = m_ai->player()->getX();
-    qreal currY = m_ai->player()->getY();
-
-    qreal tolerance = 5.0;
-
-    if (targetCell.x() != myCol && targetCell.y() != myRow) {
-        // Diagonal target should not happen in BFS, but if it does, align to current cell center first
-        qreal dx = myCenterX - currX;
-        qreal dy = myCenterY - currY;
-        if (std::abs(dx) > tolerance) {
-            if (dx > 0) m_ai->player()->goRight();
-            else m_ai->player()->goLeft();
-        } else if (std::abs(dy) > tolerance) {
-            if (dy > 0) m_ai->player()->goDown();
-            else m_ai->player()->goUp();
-        } else {
-            m_ai->player()->stopMoving();
-        }
-        return;
-    }
-
     if (targetCell.x() > myCol) {
-        // We want to move Right. First align Vertically to our current cell center!
-        qreal dy = myCenterY - currY;
-        if (std::abs(dy) > tolerance) {
-            if (dy > 0) m_ai->player()->goDown();
-            else m_ai->player()->goUp();
-        } else {
-            m_ai->player()->goRight();
-        }
+        m_ai->player()->goRight();
     } else if (targetCell.x() < myCol) {
-        // We want to move Left. First align Vertically to our current cell center!
-        qreal dy = myCenterY - currY;
-        if (std::abs(dy) > tolerance) {
-            if (dy > 0) m_ai->player()->goDown();
-            else m_ai->player()->goUp();
-        } else {
-            m_ai->player()->goLeft();
-        }
+        m_ai->player()->goLeft();
     } else if (targetCell.y() > myRow) {
-        // We want to move Down. First align Horizontally to our current cell center!
-        qreal dx = myCenterX - currX;
-        if (std::abs(dx) > tolerance) {
-            if (dx > 0) m_ai->player()->goRight();
-            else m_ai->player()->goLeft();
-        } else {
-            m_ai->player()->goDown();
-        }
+        m_ai->player()->goDown();
     } else if (targetCell.y() < myRow) {
-        // We want to move Up. First align Horizontally to our current cell center!
-        qreal dx = myCenterX - currX;
-        if (std::abs(dx) > tolerance) {
-            if (dx > 0) m_ai->player()->goRight();
-            else m_ai->player()->goLeft();
-        } else {
-            m_ai->player()->goUp();
-        }
+        m_ai->player()->goUp();
     } else {
-        // If we are already in the same cell, align to center of the target cell
+        // Already in the same cell, align to center of the target cell
+        qreal currX = m_ai->player()->getX();
+        qreal currY = m_ai->player()->getY();
+        qreal targetCenterX = (targetCell.x() + 0.5) * Granatier::CellSize;
+        qreal targetCenterY = (targetCell.y() + 0.5) * Granatier::CellSize;
         qreal dx = targetCenterX - currX;
         qreal dy = targetCenterY - currY;
+        qreal tolerance = 5.0;
 
         if (std::abs(dx) > tolerance) {
             if (dx > 0) m_ai->player()->goRight();
@@ -547,6 +501,8 @@ void AIStrategyLevel2::update()
 
     std::vector<std::vector<bool>> dangerGrid = computeDangerGrid();
 
+
+
     // Compute distance to closest alive enemy player
     int closestEnemyDistance = 999999;
     QList<Player*> players = m_ai->game()->getPlayers();
@@ -565,6 +521,14 @@ void AIStrategyLevel2::update()
     // Trigger corridor/dead-end avoidance when threats are close
     bool strictlyAvoidDeadEnds = (closestEnemyDistance <= 4);
 
+    // Compute active-only danger (no recent persistence) for escape/validation decisions
+    std::vector<std::vector<bool>> activeDangerGrid = computeDangerGrid(QPoint(-1, -1), false);
+
+    // Tick down path commitment
+    if (m_pathCommitTicks > 0) {
+        m_pathCommitTicks--;
+    }
+
     // Validate current target/path
     if (m_currentTargetCell.x() != -1 && m_currentTargetCell.y() != -1) {
         bool pathValid = true;
@@ -577,14 +541,14 @@ void AIStrategyLevel2::update()
             if (!isWalkable) {
                 pathValid = false;
             }
-            if (pathValid && dangerGrid[m_currentTargetCell.y()][m_currentTargetCell.x()] && !dangerGrid[myRow][myCol]) {
+            // Only invalidate path if the NEXT cell has ACTIVE bomb danger (not recent persistence)
+            if (pathValid && activeDangerGrid[m_currentTargetCell.y()][m_currentTargetCell.x()] && !activeDangerGrid[myRow][myCol]) {
                 pathValid = false;
             }
         }
 
-        // Pivot: If we are currently heading for a non-green bonus target (e.g. block or enemy), 
-        // but there is a green bonus nearby (distance <= 3), discard the old path to grab it immediately!
-        if (pathValid) {
+        // Pivot to green bonus ONLY when commitment cooldown expired
+        if (pathValid && m_pathCommitTicks <= 0) {
             bool pathContainsGreenBonus = false;
             for (const auto& pt : m_currentPath) {
                 if (isGreenBonus(pt.y(), pt.x())) {
@@ -593,8 +557,11 @@ void AIStrategyLevel2::update()
                 }
             }
             if (!pathContainsGreenBonus) {
-                if (hasGreenBonusNearby(myRow, myCol, 3)) {
-                    pathValid = false; // Discard path to trigger target re-evaluation!
+                QList<QPoint> greenPath = findPath(myCell, dangerGrid, 1, false);
+                if (!greenPath.isEmpty() && greenPath.size() > 1 && greenPath.size() <= 4) {
+                    m_currentPath = greenPath;
+                    m_currentTargetCell = greenPath[1];
+                    m_pathCommitTicks = 5; // Commit to this green path for 5 ticks
                 }
             }
         }
@@ -602,17 +569,18 @@ void AIStrategyLevel2::update()
         if (!pathValid) {
             m_currentTargetCell = QPoint(-1, -1);
             m_currentPath.clear();
+            m_pathCommitTicks = 0;
             m_ai->player()->stopMoving();
         }
     }
 
-    // 1. Check if we are currently standing in a dangerous cell
-    if (dangerGrid[myRow][myCol] == true) {
-        // Find path to closest safe cell (always allow fleeing even to dead ends to save our life)
+    if (activeDangerGrid[myRow][myCol] == true) {
+        // Find path to closest safe cell using FULL danger grid (avoids recently-exploded cells)
         QList<QPoint> escapePath = findPath(myCell, dangerGrid, 0, false);
         if (!escapePath.isEmpty() && escapePath.size() > 1) {
             m_currentPath = escapePath;
             m_currentTargetCell = escapePath[1];
+            m_pathCommitTicks = 3; // Commit to escape path
             moveTowardsCell(m_currentTargetCell);
             return;
         }
@@ -644,6 +612,7 @@ void AIStrategyLevel2::update()
                 m_ai->player()->dropBomb();
                 m_currentPath = simEscapePath;
                 m_currentTargetCell = simEscapePath[1];
+                m_pathCommitTicks = 5; // Commit to escape after bombing
                 moveTowardsCell(m_currentTargetCell);
                 return;
             }
@@ -729,6 +698,7 @@ void AIStrategyLevel2::update()
     if (!path.isEmpty() && path.size() > 1) {
         m_currentPath = path;
         m_currentTargetCell = path[1];
+        m_pathCommitTicks = 5; // Commit to this path
         moveTowardsCell(m_currentTargetCell);
     } else {
         // No path/targets found, stay idle and stop moving

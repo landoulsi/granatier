@@ -275,72 +275,23 @@ void AIStrategyLevel1::moveTowardsCell(const QPoint& targetCell)
     int myRow = m_arena->getRowFromY(m_ai->player()->getY());
     int myCol = m_arena->getColFromX(m_ai->player()->getX());
 
-    qreal targetCenterX = (targetCell.x() + 0.5) * Granatier::CellSize;
-    qreal targetCenterY = (targetCell.y() + 0.5) * Granatier::CellSize;
-    qreal myCenterX = (myCol + 0.5) * Granatier::CellSize;
-    qreal myCenterY = (myRow + 0.5) * Granatier::CellSize;
-
-    qreal currX = m_ai->player()->getX();
-    qreal currY = m_ai->player()->getY();
-
-    qreal tolerance = 5.0;
-
-    if (targetCell.x() != myCol && targetCell.y() != myRow) {
-        // Diagonal target should not happen in BFS, but if it does, align to current cell center first
-        qreal dx = myCenterX - currX;
-        qreal dy = myCenterY - currY;
-        if (std::abs(dx) > tolerance) {
-            if (dx > 0) m_ai->player()->goRight();
-            else m_ai->player()->goLeft();
-        } else if (std::abs(dy) > tolerance) {
-            if (dy > 0) m_ai->player()->goDown();
-            else m_ai->player()->goUp();
-        } else {
-            m_ai->player()->stopMoving();
-        }
-        return;
-    }
-
     if (targetCell.x() > myCol) {
-        // We want to move Right. First align Vertically to our current cell center!
-        qreal dy = myCenterY - currY;
-        if (std::abs(dy) > tolerance) {
-            if (dy > 0) m_ai->player()->goDown();
-            else m_ai->player()->goUp();
-        } else {
-            m_ai->player()->goRight();
-        }
+        m_ai->player()->goRight();
     } else if (targetCell.x() < myCol) {
-        // We want to move Left. First align Vertically to our current cell center!
-        qreal dy = myCenterY - currY;
-        if (std::abs(dy) > tolerance) {
-            if (dy > 0) m_ai->player()->goDown();
-            else m_ai->player()->goUp();
-        } else {
-            m_ai->player()->goLeft();
-        }
+        m_ai->player()->goLeft();
     } else if (targetCell.y() > myRow) {
-        // We want to move Down. First align Horizontally to our current cell center!
-        qreal dx = myCenterX - currX;
-        if (std::abs(dx) > tolerance) {
-            if (dx > 0) m_ai->player()->goRight();
-            else m_ai->player()->goLeft();
-        } else {
-            m_ai->player()->goDown();
-        }
+        m_ai->player()->goDown();
     } else if (targetCell.y() < myRow) {
-        // We want to move Up. First align Horizontally to our current cell center!
-        qreal dx = myCenterX - currX;
-        if (std::abs(dx) > tolerance) {
-            if (dx > 0) m_ai->player()->goRight();
-            else m_ai->player()->goLeft();
-        } else {
-            m_ai->player()->goUp();
-        }
+        m_ai->player()->goUp();
     } else {
-        // If we are already in the same cell, align to center of the target cell
+        // Already in the same cell, align to center of the target cell
+        qreal currX = m_ai->player()->getX();
+        qreal currY = m_ai->player()->getY();
+        qreal targetCenterX = (targetCell.x() + 0.5) * Granatier::CellSize;
+        qreal targetCenterY = (targetCell.y() + 0.5) * Granatier::CellSize;
         qreal dx = targetCenterX - currX;
         qreal dy = targetCenterY - currY;
+        qreal tolerance = 5.0;
 
         if (std::abs(dx) > tolerance) {
             if (dx > 0) m_ai->player()->goRight();

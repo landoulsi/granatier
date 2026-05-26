@@ -25,6 +25,7 @@ Player::Player(qreal p_x, qreal p_y, const QString& p_playerID, const PlayerSett
  : Character(p_x, p_y, p_arena)
  , m_throwBomb(false)
  , m_kickBomb(false)
+ , m_aiLevel(0)
 {
     m_type = Granatier::Element::PLAYER;
     m_themeId = p_playerSettings->playerThemeId(p_playerID);
@@ -746,6 +747,17 @@ int Player::bombArmory() const
     return m_bombArmory;
 }
 
+void Player::setAILevel(int level)
+{
+    m_aiLevel = level;
+    resurrect();
+}
+
+int Player::aiLevel() const
+{
+    return m_aiLevel;
+}
+
 void Player::resurrect()
 {
     if(m_badBonusMillisecondsToElapse > 0)
@@ -763,6 +775,31 @@ void Player::resurrect()
     m_bombPower = Settings::self()->initialBombPower();
     m_maxBombArmory = Settings::self()->initialBombArmory();
     m_bombArmory = m_maxBombArmory;
+
+    // Apply AI-specific starting bonus statistics
+    if (m_aiLevel == 1) {
+        m_speed += 1;
+        if(m_speed > m_maxSpeed) m_speed = m_maxSpeed;
+        m_normalSpeed = m_speed;
+        
+        m_bombPower += 1;
+        if(m_bombPower > 10) m_bombPower = 10;
+        
+        m_maxBombArmory += 1;
+        if(m_maxBombArmory > 10) m_maxBombArmory = 10;
+        m_bombArmory = m_maxBombArmory;
+    } else if (m_aiLevel == 2) {
+        m_speed += 2;
+        if(m_speed > m_maxSpeed) m_speed = m_maxSpeed;
+        m_normalSpeed = m_speed;
+        
+        m_bombPower += 2;
+        if(m_bombPower > 10) m_bombPower = 10;
+        
+        m_maxBombArmory += 2;
+        if(m_maxBombArmory > 10) m_maxBombArmory = 10;
+        m_bombArmory = m_maxBombArmory;
+    }
     if(m_listShield.count() != 0)
     {
         m_listShield.clear();
