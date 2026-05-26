@@ -638,7 +638,7 @@ void AIStrategyLevel2::update()
     // A. Priority Life Saver: Seek Shield bonus if we don't have one active and it is reachable
     bool seekShield = !m_ai->player()->hasShield();
     if (seekShield) {
-        QList<QPoint> shieldPath = findPath(myCell, dangerGrid, 4, strictlyAvoidDeadEnds);
+        QList<QPoint> shieldPath = findPath(myCell, dangerGrid, 4, false);
         if (!shieldPath.isEmpty() && shieldPath.size() > 1) {
             path = shieldPath;
         }
@@ -646,7 +646,7 @@ void AIStrategyLevel2::update()
 
     // B. Priority Collect: Seek ANY green bonus if it is extremely close (distance <= 3, path size <= 4)
     if (path.isEmpty()) {
-        QList<QPoint> closeGreenPath = findPath(myCell, dangerGrid, 1, strictlyAvoidDeadEnds);
+        QList<QPoint> closeGreenPath = findPath(myCell, dangerGrid, 1, false);
         if (!closeGreenPath.isEmpty() && closeGreenPath.size() > 1 && closeGreenPath.size() <= 4) {
             path = closeGreenPath;
         }
@@ -657,11 +657,11 @@ void AIStrategyLevel2::update()
             // High Aggression: Target nearby enemies first
             path = findPath(myCell, dangerGrid, 3, strictlyAvoidDeadEnds);
             if (path.isEmpty()) {
-                path = findPath(myCell, dangerGrid, 1, strictlyAvoidDeadEnds); // Green bonuses
+                path = findPath(myCell, dangerGrid, 1, false); // Green bonuses
             }
         } else {
             // High Development: Target green bonuses first
-            path = findPath(myCell, dangerGrid, 1, strictlyAvoidDeadEnds);
+            path = findPath(myCell, dangerGrid, 1, false);
             if (path.isEmpty()) {
                 path = findPath(myCell, dangerGrid, 3, strictlyAvoidDeadEnds); // Enemies
             }
