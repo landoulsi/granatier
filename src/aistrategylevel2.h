@@ -35,16 +35,19 @@ private:
     };
 
     std::vector<std::vector<bool>> computeDangerGrid(const QPoint& simulatedBombPos = QPoint(-1, -1));
-    QList<QPoint> findPath(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType);
-    QList<QPoint> findPathImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlySafe, bool strictlyAvoidBadBonuses);
-    QList<QPoint> findPathToEnemyDirectly(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid);
-    QList<QPoint> findPathToEnemyDirectlyImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, bool strictlyAvoidBadBonuses);
+    QList<QPoint> findPath(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlyAvoidDeadEnds = false);
+    QList<QPoint> findPathImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlySafe, bool strictlyAvoidBadBonuses, bool strictlyAvoidDeadEnds);
+    QList<QPoint> findPathToEnemyDirectly(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, bool strictlyAvoidDeadEnds = false);
+    QList<QPoint> findPathToEnemyDirectlyImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, bool strictlyAvoidBadBonuses, bool strictlyAvoidDeadEnds);
 
     bool isGreenBonus(int row, int col);
     bool isBadBonus(int row, int col);
+    bool isShieldBonus(int row, int col);
+    bool hasGreenBonusNearby(int row, int col, int maxDist);
     bool isAdjacentToBlock(int row, int col);
     bool isAdjacentToEnemy(int row, int col);
     bool isAdjacentToBadBonus(int row, int col);
+    int countWalkableNeighbors(int row, int col);
     void moveTowardsCell(const QPoint& targetCell);
 
 public:

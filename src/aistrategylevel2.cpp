@@ -129,6 +129,58 @@ bool AIStrategyLevel2::isBadBonus(int row, int col)
     return false;
 }
 
+bool AIStrategyLevel2::isShieldBonus(int row, int col)
+{
+    QList<Element*> elements = m_arena->getCell(row, col).getElements(Granatier::Element::BONUS);
+    for (auto* element : elements) {
+        auto* bonus = dynamic_cast<Bonus*>(element);
+        if (bonus && !bonus->isTaken()) {
+            if (bonus->getBonusType() == Granatier::Bonus::SHIELD) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool AIStrategyLevel2::hasGreenBonusNearby(int row, int col, int maxDist)
+{
+    std::queue<std::pair<QPoint, int>> q;
+    std::vector<std::vector<bool>> visited(m_rows, std::vector<bool>(m_cols, false));
+    q.push({QPoint(col, row), 0});
+    visited[row][col] = true;
+
+    int rowOffsets[] = {-1, 1, 0, 0};
+    int colOffsets[] = {0, 0, -1, 1};
+
+    while (!q.empty()) {
+        auto pair = q.front();
+        q.pop();
+        QPoint curr = pair.first;
+        int dist = pair.second;
+
+        if (dist > 0 && isGreenBonus(curr.y(), curr.x())) {
+            return true;
+        }
+
+        if (dist < maxDist) {
+            for (int i = 0; i < 4; ++i) {
+                int nr = curr.y() + rowOffsets[i];
+                int nc = curr.x() + colOffsets[i];
+                if (nr >= 0 && nr < m_rows && nc >= 0 && nc < m_cols && !visited[nr][nc]) {
+                    bool walkable = m_arena->getCell(nr, nc).isWalkable(m_ai->player()) &&
+                                    m_arena->getCell(nr, nc).getType() != Granatier::Cell::HOLE;
+                    if (walkable) {
+                        visited[nr][nc] = true;
+                        q.push({QPoint(nc, nr), dist + 1});
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
 bool AIStrategyLevel2::isAdjacentToBlock(int row, int col)
 {
     int rowOffsets[] = {-1, 1, 0, 0};
@@ -211,25 +263,44 @@ bool AIStrategyLevel2::isAdjacentToBadBonus(int row, int col)
     return false;
 }
 
-QList<QPoint> AIStrategyLevel2::findPath(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType)
+int AIStrategyLevel2::countWalkableNeighbors(int row, int col)
+{
+    int count = 0;
+    int rowOffsets[] = {-1, 1, 0, 0};
+    int colOffsets[] = {0, 0, -1, 1};
+    for (int i = 0; i < 4; ++i) {
+        int nr = row + rowOffsets[i];
+        int nc = col + colOffsets[i];
+        if (nr >= 0 && nr < m_rows && nc >= 0 && nc < m_cols) {
+            bool isStartCell = (nr == m_arena->getRowFromY(m_ai->player()->getY()) && nc == m_arena->getColFromX(m_ai->player()->getX()));
+            bool walkable = (isStartCell || m_arena->getCell(nr, nc).isWalkable(m_ai->player())) &&
+                            m_arena->getCell(nr, nc).getType() != Granatier::Cell::HOLE;
+            if (walkable) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+QList<QPoint> AIStrategyLevel2::findPath(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlyAvoidDeadEnds)
 {
     // Tier 1: Try to find path by strictly avoiding bad/red bonuses
     if (targetType == 0) {
-        QList<QPoint> path = findPathImpl(start, dangerGrid, targetType, true, true);
+        QList<QPoint> path = findPathImpl(start, dangerGrid, targetType, true, true, strictlyAvoidDeadEnds);
         if (!path.isEmpty()) return path;
     }
-    QList<QPoint> path = findPathImpl(start, dangerGrid, targetType, false, true);
+    QList<QPoint> path = findPathImpl(start, dangerGrid, targetType, false, true, strictlyAvoidDeadEnds);
     if (!path.isEmpty()) return path;
 
     // Tier 2 Fallback: Allow stepping on bad/red bonuses since we are blocked
     if (targetType == 0) {
-        QList<QPoint> path = findPathImpl(start, dangerGrid, targetType, true, false);
+        QList<QPoint> path = findPathImpl(start, dangerGrid, targetType, true, false, strictlyAvoidDeadEnds);
         if (!path.isEmpty()) return path;
     }
-    return findPathImpl(start, dangerGrid, targetType, false, false);
+    return findPathImpl(start, dangerGrid, targetType, false, false, strictlyAvoidDeadEnds);
 }
-
-QList<QPoint> AIStrategyLevel2::findPathImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlySafe, bool strictlyAvoidBadBonuses)
+QList<QPoint> AIStrategyLevel2::findPathImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, int targetType, bool strictlySafe, bool strictlyAvoidBadBonuses, bool strictlyAvoidDeadEnds)
 {
     QList<GridNode> nodesList;
     std::queue<int> q;
@@ -257,6 +328,8 @@ QList<QPoint> AIStrategyLevel2::findPathImpl(const QPoint& start, const std::vec
             isTarget = isAdjacentToBlock(curr.r, curr.c);
         } else if (targetType == 3) { // Enemy player adjacent
             isTarget = isAdjacentToEnemy(curr.r, curr.c);
+        } else if (targetType == 4) { // Shield bonus
+            isTarget = isShieldBonus(curr.r, curr.c);
         }
 
         if (isTarget) {
@@ -280,6 +353,25 @@ QList<QPoint> AIStrategyLevel2::findPathImpl(const QPoint& start, const std::vec
                                 m_arena->getCell(nr, nc).getType() != Granatier::Cell::HOLE;
                 if (walkable) {
                     bool allowStep = !strictlyAvoidBadBonuses || !isBadBonus(nr, nc);
+                    if (allowStep && strictlyAvoidDeadEnds) {
+                        if (countWalkableNeighbors(nr, nc) <= 1) {
+                            bool isTargetOrAdjacent = false;
+                            if (targetType == 0) {
+                                isTargetOrAdjacent = (dangerGrid[nr][nc] == false);
+                            } else if (targetType == 1) {
+                                isTargetOrAdjacent = isGreenBonus(nr, nc);
+                            } else if (targetType == 2) {
+                                isTargetOrAdjacent = isAdjacentToBlock(nr, nc);
+                            } else if (targetType == 3) {
+                                isTargetOrAdjacent = isAdjacentToEnemy(nr, nc);
+                            } else if (targetType == 4) {
+                                isTargetOrAdjacent = isShieldBonus(nr, nc);
+                            }
+                            if (!isTargetOrAdjacent) {
+                                allowStep = false;
+                            }
+                        }
+                    }
                     if (allowStep) {
                         bool isSafe = (dangerGrid[nr][nc] == false);
                         // If strictlySafe is true, we ONLY step on safe cells (except start cell).
@@ -406,6 +498,24 @@ void AIStrategyLevel2::update()
 
     std::vector<std::vector<bool>> dangerGrid = computeDangerGrid();
 
+    // Compute distance to closest alive enemy player
+    int closestEnemyDistance = 999999;
+    QList<Player*> players = m_ai->game()->getPlayers();
+    for (auto* other : players) {
+        if (other == m_ai->player() || !other->isAlive()) continue;
+        if (m_ai->player()->team() != 0 && m_ai->player()->team() == other->team()) continue;
+
+        int r = m_arena->getRowFromY(other->getY());
+        int c = m_arena->getColFromX(other->getX());
+        int dist = std::abs(myRow - r) + std::abs(myCol - c);
+        if (dist < closestEnemyDistance) {
+            closestEnemyDistance = dist;
+        }
+    }
+
+    // Trigger corridor/dead-end avoidance when threats are close
+    bool strictlyAvoidDeadEnds = (closestEnemyDistance <= 4);
+
     // Validate current target/path
     if (m_currentTargetCell.x() != -1 && m_currentTargetCell.y() != -1) {
         bool pathValid = true;
@@ -422,6 +532,24 @@ void AIStrategyLevel2::update()
                 pathValid = false;
             }
         }
+
+        // Pivot: If we are currently heading for a non-green bonus target (e.g. block or enemy), 
+        // but there is a green bonus nearby (distance <= 3), discard the old path to grab it immediately!
+        if (pathValid) {
+            bool pathContainsGreenBonus = false;
+            for (const auto& pt : m_currentPath) {
+                if (isGreenBonus(pt.y(), pt.x())) {
+                    pathContainsGreenBonus = true;
+                    break;
+                }
+            }
+            if (!pathContainsGreenBonus) {
+                if (hasGreenBonusNearby(myRow, myCol, 3)) {
+                    pathValid = false; // Discard path to trigger target re-evaluation!
+                }
+            }
+        }
+
         if (!pathValid) {
             m_currentTargetCell = QPoint(-1, -1);
             m_currentPath.clear();
@@ -431,8 +559,8 @@ void AIStrategyLevel2::update()
 
     // 1. Check if we are currently standing in a dangerous cell
     if (dangerGrid[myRow][myCol] == true) {
-        // Find path to closest safe cell
-        QList<QPoint> escapePath = findPath(myCell, dangerGrid, 0);
+        // Find path to closest safe cell (always allow fleeing even to dead ends to save our life)
+        QList<QPoint> escapePath = findPath(myCell, dangerGrid, 0, false);
         if (!escapePath.isEmpty() && escapePath.size() > 1) {
             m_currentPath = escapePath;
             m_currentTargetCell = escapePath[1];
@@ -446,29 +574,30 @@ void AIStrategyLevel2::update()
     if (adjacentToTarget && m_ai->player()->bombArmory() > 0 && dangerGrid[myRow][myCol] == false) {
         // Simulate dropping bomb here
         std::vector<std::vector<bool>> simDanger = computeDangerGrid(myCell);
-        QList<QPoint> simEscapePath = findPath(myCell, simDanger, 0);
-        
-        // Only drop if there is a valid simulated escape route, OR if we are trapped next to a block/enemy (no escape route exists but no bombs belonging to this player are active)
-        bool hasOwnActiveBomb = false;
-        QList<Bomb*> bombs = m_ai->game()->getBombs();
-        for (auto* bomb : bombs) {
-            if (!bomb->isDetonated() && bomb->creator() == m_ai->player()) {
-                hasOwnActiveBomb = true;
-                break;
+
+        // Prevent destroying green bonuses by checking the simulated blast zone
+        bool greenBonusInBlast = false;
+        for (int r = 0; r < m_rows; ++r) {
+            for (int c = 0; c < m_cols; ++c) {
+                if (simDanger[r][c] && isGreenBonus(r, c)) {
+                    greenBonusInBlast = true;
+                    break;
+                }
             }
+            if (greenBonusInBlast) break;
         }
-        if ((!simEscapePath.isEmpty() && simEscapePath.size() > 1) || (!hasOwnActiveBomb && adjacentToTarget)) {
-            m_ai->player()->dropBomb();
+
+        if (!greenBonusInBlast) {
+            QList<QPoint> simEscapePath = findPath(myCell, simDanger, 0, strictlyAvoidDeadEnds);
+            
+            // Strict safety: Only place bomb if we have a valid simulated escape route
             if (!simEscapePath.isEmpty() && simEscapePath.size() > 1) {
+                m_ai->player()->dropBomb();
                 m_currentPath = simEscapePath;
                 m_currentTargetCell = simEscapePath[1];
                 moveTowardsCell(m_currentTargetCell);
-            } else {
-                m_currentTargetCell = QPoint(-1, -1);
-                m_currentPath.clear();
-                m_ai->player()->stopMoving();
+                return;
             }
-            return;
         }
     }
 
@@ -504,20 +633,48 @@ void AIStrategyLevel2::update()
     }
 
     // 4. Seek targets
-    // Target Prioritization:
-    // A. Green bonuses
-    QList<QPoint> path = findPath(myCell, dangerGrid, 1);
-    if (path.isEmpty()) {
-        // B. Enemies
-        path = findPath(myCell, dangerGrid, 3);
+    QList<QPoint> path;
+
+    // A. Priority Life Saver: Seek Shield bonus if we don't have one active and it is reachable
+    bool seekShield = !m_ai->player()->hasShield();
+    if (seekShield) {
+        QList<QPoint> shieldPath = findPath(myCell, dangerGrid, 4, strictlyAvoidDeadEnds);
+        if (!shieldPath.isEmpty() && shieldPath.size() > 1) {
+            path = shieldPath;
+        }
     }
+
+    // B. Priority Collect: Seek ANY green bonus if it is extremely close (distance <= 3, path size <= 4)
+    if (path.isEmpty()) {
+        QList<QPoint> closeGreenPath = findPath(myCell, dangerGrid, 1, strictlyAvoidDeadEnds);
+        if (!closeGreenPath.isEmpty() && closeGreenPath.size() > 1 && closeGreenPath.size() <= 4) {
+            path = closeGreenPath;
+        }
+    }
+
+    if (path.isEmpty()) {
+        if (closestEnemyDistance <= 3) {
+            // High Aggression: Target nearby enemies first
+            path = findPath(myCell, dangerGrid, 3, strictlyAvoidDeadEnds);
+            if (path.isEmpty()) {
+                path = findPath(myCell, dangerGrid, 1, strictlyAvoidDeadEnds); // Green bonuses
+            }
+        } else {
+            // High Development: Target green bonuses first
+            path = findPath(myCell, dangerGrid, 1, strictlyAvoidDeadEnds);
+            if (path.isEmpty()) {
+                path = findPath(myCell, dangerGrid, 3, strictlyAvoidDeadEnds); // Enemies
+            }
+        }
+    }
+
     if (path.isEmpty()) {
         // C. Block clearing
-        path = findPath(myCell, dangerGrid, 2);
+        path = findPath(myCell, dangerGrid, 2, strictlyAvoidDeadEnds);
     }
     if (path.isEmpty()) {
         // D. Seek closest enemy directly to get in range
-        path = findPathToEnemyDirectly(myCell, dangerGrid);
+        path = findPathToEnemyDirectly(myCell, dangerGrid, strictlyAvoidDeadEnds);
     }
 
     if (!path.isEmpty() && path.size() > 1) {
@@ -530,17 +687,17 @@ void AIStrategyLevel2::update()
     }
 }
 
-QList<QPoint> AIStrategyLevel2::findPathToEnemyDirectly(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid)
+QList<QPoint> AIStrategyLevel2::findPathToEnemyDirectly(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, bool strictlyAvoidDeadEnds)
 {
     // Tier 1: Try to reach enemy strictly avoiding bad/red bonuses
-    QList<QPoint> path = findPathToEnemyDirectlyImpl(start, dangerGrid, true);
+    QList<QPoint> path = findPathToEnemyDirectlyImpl(start, dangerGrid, true, strictlyAvoidDeadEnds);
     if (!path.isEmpty()) return path;
 
     // Tier 2 Fallback: Allow stepping on bad/red bonuses since we are blocked
-    return findPathToEnemyDirectlyImpl(start, dangerGrid, false);
+    return findPathToEnemyDirectlyImpl(start, dangerGrid, false, strictlyAvoidDeadEnds);
 }
 
-QList<QPoint> AIStrategyLevel2::findPathToEnemyDirectlyImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, bool strictlyAvoidBadBonuses)
+QList<QPoint> AIStrategyLevel2::findPathToEnemyDirectlyImpl(const QPoint& start, const std::vector<std::vector<bool>>& dangerGrid, bool strictlyAvoidBadBonuses, bool strictlyAvoidDeadEnds)
 {
     QList<Player*> players = m_ai->game()->getPlayers();
     Player* closestEnemy = nullptr;
@@ -601,6 +758,14 @@ QList<QPoint> AIStrategyLevel2::findPathToEnemyDirectlyImpl(const QPoint& start,
                                 m_arena->getCell(nr, nc).getType() != Granatier::Cell::HOLE;
                 if (walkable) {
                     bool allowStep = !strictlyAvoidBadBonuses || !isBadBonus(nr, nc);
+                    if (allowStep && strictlyAvoidDeadEnds) {
+                        if (countWalkableNeighbors(nr, nc) <= 1) {
+                            bool isTargetOrAdjacent = (nr == er && nc == ec) || (std::abs(nr - er) + std::abs(nc - ec) <= 1);
+                            if (!isTargetOrAdjacent) {
+                                allowStep = false;
+                            }
+                        }
+                    }
                     if (allowStep) {
                         bool isSafe = (dangerGrid[nr][nc] == false);
                         if (isSafe) {
