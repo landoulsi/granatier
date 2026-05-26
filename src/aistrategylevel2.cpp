@@ -421,7 +421,7 @@ void AIStrategyLevel2::moveTowardsCell(const QPoint& targetCell)
         qreal targetCenterY = (targetCell.y() + 0.5) * Granatier::CellSize;
         qreal dx = targetCenterX - currX;
         qreal dy = targetCenterY - currY;
-        qreal tolerance = 5.0;
+        qreal tolerance = 8.0;
 
         if (std::abs(dx) > tolerance) {
             if (dx > 0) m_ai->player()->goRight();
@@ -630,7 +630,7 @@ void AIStrategyLevel2::update()
             qreal targetY = (m_currentTargetCell.y() + 0.5) * Granatier::CellSize;
             qreal currX = m_ai->player()->getX();
             qreal currY = m_ai->player()->getY();
-            if (std::abs(targetX - currX) <= 5.0 && std::abs(targetY - currY) <= 5.0) {
+            if (std::abs(targetX - currX) <= 8.0 && std::abs(targetY - currY) <= 8.0) {
                 // Reached target cell, pop path
                 if (!m_currentPath.isEmpty()) {
                     m_currentPath.removeFirst();
